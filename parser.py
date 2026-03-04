@@ -1,5 +1,5 @@
-from reader import load_pcap
 import struct
+from reader import load_pcap
 
 MQTT_TYPES = { #MQTT poruke su identifikovane po prvom bajtu, koji se naziva "fixed header". Ovaj bajt sadrži informacije o tipu poruke i nekim drugim opcijama. Na osnovu vrijednosti ovog bajta, možemo odrediti o kojoj vrsti MQTT poruke se radi. Primer MQTT poruka izgleda ovako: 102e00064d514973647003c2003c000f6d6f73717075622f3436332d626f7800056571533331000870617373776f7264 - prvi bajt (0x10) označava da se radi o CONNECT poruci, a ostatak bajtova sadrži informacije o klijentu, korisničkom imenu, lozinki i drugim opcijama koje su potrebne za uspostavljanje veze između klijenta i MQTT brokera. Da je prvi bajt bio 0x30, onda bi se radilo o PUBLISH poruci, a ostatak bajtova bi sadržavao informacije o temi, poruci i drugim opcijama koje su potrebne za slanje poruke na MQTT broker.
     0x10 : "CONNECT", #inicijalna poruka kojom se klijent povezuje na MQTT broker
@@ -13,10 +13,6 @@ MQTT_TYPES = { #MQTT poruke su identifikovane po prvom bajtu, koji se naziva "fi
 }
 
 
-data = load_pcap("captures/scan_A.pcap")
-
-wiht_payload = [p for p in data if len(p['raw'])> 0]
-print(f"Paket sa paylodom : {len(wiht_payload)}")
 
 def parse_mqtt(raw : bytes) -> dict | None: #1. izvlacimo tip iz byte 0
     if len(raw) < 2:
@@ -45,8 +41,29 @@ def parse_mqtt(raw : bytes) -> dict | None: #1. izvlacimo tip iz byte 0
     
     elif type_byte == 0x10: #za CONNECT poruke - izvlacimo client_id
 
-        client_id_len = struct.unpack("!H", raw[10:12])[0] #raw[10:12] - prvi bajt nakon fixed header-a sadrži dužinu client_id-a, a zatim slijedi sam client_id
-        client_id = raw[12:12+client_id_len].decode("utf-8", errors="replace")
-        result["client_id"] = client_id
-        
+        proto_len = struct.unpack("!H", raw[2:4])[0] # 
+        offset = 2 + 2 + proto_len + 1 + 1 + 2 #2 bajta za proto name, zatim proto name, zatim 1 bajt za verziju, 1 bajt za connect flags i 2 bajta za keep alive
 
+
+        client_id_len = struct.unpack("!H", raw[offset:offset+2])[0] #raw[10:12] - prvi bajt nakon fixed header-a sadrži dužinu client_id-a, a zatim slijedi sam client_id
+        client_id = raw[offset+2:offset+2+client_id_len].decode("utf-8", errors="replace")
+        result["client_id"] = client_id
+
+          # Username je odmah nakon client_id (ako postoji)
+        u_offset = offset + 2 + client_id_len
+        if u_offset + 2 <= len(raw):
+                u_len = struct.unpack("!H", raw[u_offset:u_offset+2])[0]
+                result["username"] = raw[u_offset+2 : u_offset+2+u_len].decode("utf-8", errors="replace")
+            
+    return result
+
+if __name__ == "__main__":
+    data = load_pcap("captures/scan_A.pcap")
+    sa_payload = [p for p in data if len(p['raw'])>0]
+    print(f"Paketa sa payloadom : {len(sa_payload)}")
+
+    for i,p in enumerate(sa_payload[:20]):
+        parsed = parse_mqtt(p['raw'])
+        if parsed:
+            info = {k: v for k, v in parsed.items() if v!= ""}
+            print(f"[{i}]{info}")

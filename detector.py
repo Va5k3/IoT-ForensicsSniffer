@@ -6,7 +6,7 @@ connect_times = defaultdict(list) #kljuc je ip adresa, a vrijednost je lista tim
 
 
 
-def detect(parsed_packet: dict, src_ip: str, timestamp: float) -> dict | None:
+def detectBruteForce(parsed_packet: dict, src_ip: str, timestamp: float) -> dict | None:
 
      if parsed_packet["msg_type"] == "CONNECT":
         connect_times[src_ip].append(timestamp) #dodajemo timestamp u listu za tu ip adresu
@@ -31,7 +31,7 @@ if __name__ == "__main__":
         if len(p['raw']) > 0:
             parsed = parse_mqtt(p['raw'])
             if parsed:
-                anomaly = detect(parsed, p["src_ip"], p["timestamp"])
+                anomaly = detectBruteForce(parsed, p["src_ip"], p["timestamp"])
                 if anomaly:
                     anomalije.append(anomaly)
     print(f"Detektovano anomalija: {len(anomalije)}")

@@ -1,0 +1,23 @@
+# --- Mrežni protokoli i snifovanje ---
+scapy>=2.5.0           # Glavni alat za presretanje i analizu mrežnih paketa (sniffer.py). Aktivno slusa mrezni saobracaj. Hvata sve pakete cak i one koji nisu namenjeni nasem racunaru
+paho-mqtt>=1.6.1       # Omogućava komunikaciju sa MQTT brokerom i čitanje poruka
+aiocoap>=0.4.7         # Biblioteka za rad sa CoAP protokolom (čest kod IoT uređaja)
+
+# --- Web Server i API (Backend) ---
+flask>=3.0.0           # Osnovni framework za tvoj Web API server (api.py)
+flask-cors>=4.0.0      # Dozvoljava Dashboard-u da pristupi API-ju sa različitih portova
+flask-socketio>=5.3.6  # Omogućava slanje podataka u realnom vremenu na Dashboard (WebSockets)
+eventlet>=0.33.3       # Optimizacija za SocketIO da bi server mogao da hendluje mnogo konekcija
+
+# --- Analitika i Detekcija Anomalija ---
+numpy>=1.26.0          # Rad sa nizovima brojeva i matematičke operacije
+scipy>=1.11.0          # Statistička analiza (Z-score, IQR) za detekciju napada (analyzer.py)
+scikit-learn>=1.3.0    # Machine Learning algoritmi za klasifikaciju uređaja i prepoznavanje šablona
+pandas>=2.1.0          # Manipulacija podacima i rad sa tabelama (pogodno za forenzičke izveštaje)
+
+# --- Pomoćni alati ---
+python-dateutil>=2.8.2 # Olakšava rad sa datumima i vremenskim zonama u logovima
+netifaces>=0.11.0      # Automatsko prepoznavanje tvojih mrežnih kartica (Ethernet, Wi-Fi)
+colorama>=0.4.6        # Bojenje teksta u terminalu (da bi greške bile crvene, a uspesi zeleni)
+rich>=13.7.0           # Pravljenje prelepih tabela i vizuelnih prikaza direktno u konzoli
+python-dotenv>=1.0.0   # Učitavanje tajnih lozinki i postavki iz .env fajla (config.py)

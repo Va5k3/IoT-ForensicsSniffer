@@ -10,7 +10,7 @@ def main():
     print("Baza podataka inicijalizovana.")
 
     #ucitavanje paketa iz pcap datoteke
-    data = load_pcap("captures/scan_A.pcap")
+    data = load_pcap("captures/normal.pcap")
     print(f"Ucitano {len(data)} paketa")
 
     #trazenje anomalija
@@ -25,9 +25,9 @@ def main():
             parsed = parse_mqtt(p['raw'])
             if parsed:
                 #proveravamo da li je napad
-                anomaly = detectBruteForce(parsed, p["src_ip"], p["timestamp"])
-                if not anomaly:
-                    anomaly = detectSensitivePayload(parsed, p["src_ip"], p["timestamp"])
+                #anomaly = detectBruteForce(parsed, p["src_ip"], p["timestamp"])
+                #if not anomaly:
+                anomaly = detectSensitivePayload(parsed, p["src_ip"], p["timestamp"])
                 if not anomaly:
                     anomaly = detectSuspiciousTopic(parsed, p["src_ip"], p["timestamp"])
                 if anomaly:

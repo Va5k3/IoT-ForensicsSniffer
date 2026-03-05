@@ -1,6 +1,6 @@
 from scapy.all import rdpcap
 from scapy.layers.inet import IP, TCP, UDP
-target = "captures/scan_A.pcap"
+target = "captures/normal.pcap"
 
 
 

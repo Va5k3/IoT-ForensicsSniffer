@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <title>IoT Forensics Dashboard</title>
+    <style>
+        body {
+            background-color: #1a1a2e;
+            color: white;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        
+        /* Kartice za stats */
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 8px;
+            flex: 1;
+            text-align: center;
+        }
+        .card h2 {
+            font-size: 40px;
+            color: #00d4ff;
+            margin: 0;
+        }
+        
+        /* Tabela anomalija */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        th { color: #00d4ff; }
+        .critical { color: #ff4444; }
+        .high     { color: #ff8800; }
+    </style>
+</head>
+<body>
+
+    <h1>🔍 IoT Forensics Dashboard</h1>
+
+    <!-- STATS KARTICE -->
+    <div class="stats">
+        <div class="card">
+            <p>Ukupno paketa</p>
+            <h2 id="total-packets">...</h2>
+        </div>
+        <div class="card">
+            <p>Anomalija</p>
+            <h2 id="total-anomalies">...</h2>
+        </div>
+        <div class="card">
+            <p>Napadača</p>
+            <h2 id="unique-attackers">...</h2>
+        </div>
+    </div>
+
+    <!-- TOP NAPADAČI -->
+    <h2>Top napadači</h2>
+    <div id="attackers-list">Učitavam...</div>
+
+    <!-- ANOMALIJE TABELA -->
+    <h2>Zadnje anomalije</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Vrijeme</th>
+                <th>IP</th>
+                <th>Tip</th>
+                <th>Severity</th>
+                <th>Opis</th>
+            </tr>
+        </thead>
+        <tbody id="anomalies-table">
+            <!-- JavaScript će popuniti ovo -->
+        </tbody>
+    </table>
+
+    <script>
+        // 1. Učitaj stats
+        fetch("http://localhost:5000/api/stats")
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById("total-packets").textContent = data.total_packets;
+                document.getElementById("total-anomalies").textContent = data.total_anomalies;
+                document.getElementById("unique-attackers").textContent = data.unique_attackers;
+            });
+
+        // 2. Učitaj napadače
+        fetch("http://localhost:5000/api/attackers")
+            .then(r => r.json())
+            .then(data => {
+                let list = document.getElementById("attackers-list");
+                list.innerHTML = "";
+                data.forEach(a => {
+                    list.innerHTML += `<p>${a.ip} (${a.anomaly_count} anomalija)</p>`;
+                });
+            });
+
+        // 3. Učitaj anomalije
+        fetch("http://localhost:5000/api/anomalies")
+            .then(r => r.json())
+            .then(data => {
+                let table = document.getElementById("anomalies-table");
+                table.innerHTML = "";
+                data.forEach(a => {
+                    table.innerHTML += `
+                        <tr>
+                            <td>${a.timestamp}</td>
+                            <td>${a.ip}</td>
+                            <td>${a.type}</td>
+                            <td class="${a.severity.toLowerCase()}">${a.severity}</td>
+                            <td>${a.description}</td>
+                        </tr>
+                    `;
+                });
+            });
+    </script>
+</body>
+</html>

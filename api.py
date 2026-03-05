@@ -1,8 +1,10 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
+CORS(app)
 DB_PATH  = "forensics.db"
 
 def get_conn():

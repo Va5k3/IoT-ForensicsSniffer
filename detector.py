@@ -21,6 +21,29 @@ def detectBruteForce(parsed_packet: dict, src_ip: str, timestamp: float) -> dict
                 "description" : f"Brute force: {len(connTime)} CONNECT poruka u posljednjih 60 sekundi"
             }
         return None
+
+def detectSensitivePayload(parsed_packet: dict, src_ip: str, timestamp: float) -> dict | None:
+    if parsed_packet["msg_type"] == "PUBLISH":
+        payload = parsed_packet["payload"].lower()
+        if "password" in payload or "token" in payload or "key" in payload  or "secret" in payload or "passwd" in payload:
+            return {
+                "type" : "SENSETIVE_PAYLOAD",
+                "severity" : "HIGH",
+                "ip" : src_ip,
+                "description" : f"Osetljiva rec u payload : '{payload}'"
+            }
+    return None
+def detectSuspiciousTopic(parsed_packet: dict, src_ip: str, timestamp: float) -> dict | None:
+    if parsed_packet["msg_type"] == "PUBLISH":
+        topic = parsed_packet["topic"].lower()
+        if "/cmd" in topic or "/exec" in topic or "/admin" in topic or "/shell" in topic or "/firmware" in topic:
+            return {
+                "type" : "SUSPICIOUS_TOPIC",
+                "severity" : "HIGH",
+                "ip" : src_ip,
+                "description" : f"Sumnjiv topic : '{topic}'"
+            }
+    return None
     
 if __name__ == "__main__":
     

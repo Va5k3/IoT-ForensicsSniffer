@@ -1,7 +1,11 @@
 import sqlite3
-
+import os
 
 def init_db(path: str):
+
+    if os.path.exists(path):
+        os.remove(path)
+    
     conn = sqlite3.connect(path)
 
     conn.execute("""

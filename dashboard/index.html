@@ -190,18 +190,23 @@
         color: #00d4ff;
         font-weight: bold;
     }
-
+    
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
 
 <h1>🔍 IoT Forensics Dashboard</h1>
+<p id="last-refresh" style="color:#8888aa; font-size:12px; margin-bottom:20px;">
+    Učitavam...
+</p>
 
 <!-- TABOVI -->
 <div class="tabs">
     <button class="tab active" onclick="showTab('stats')">📊 Stats</button>
     <button class="tab" onclick="showTab('napadaci')">⚠️ Napadači</button>
     <button class="tab" onclick="showTab('anomalije')">🔴 Anomalije</button>
+    <button class="tab" onclick="showTab('timeline')">📈 Timeline</button>
 </div>
 
 <!-- TAB: STATS -->
@@ -244,6 +249,14 @@
         <tbody id="anomalies-table"></tbody>
     </table>
 </div>
+<!-- TAB: TIMELINE -->
+<div id="tab-timeline" class="tab-content" style="display:none">
+    <h2>Anomalije po vremenu</h2>
+    <div style="background:#16213e; border-radius:12px; padding:20px; margin-top:10px">
+        <canvas id="timelineChart"></canvas>
+    </div>
+</div>
+
 
 <script>
     // ── TAB LOGIKA ────────────────────────────────
@@ -267,14 +280,7 @@
     }
 
     // ── UČITAJ PODATKE ────────────────────────────
-    fetch("http://localhost:5000/api/stats")
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById("total-packets").textContent = data.total_packets;
-            document.getElementById("total-anomalies").textContent = data.total_anomalies;
-            document.getElementById("unique-attackers").textContent = data.unique_attackers;
-        });
-
+    
     fetch("http://localhost:5000/api/attackers")
         .then(r => r.json())
         .then(data => {
@@ -312,6 +318,97 @@
                 `;
             });
         });
+        // ── TIMELINE GRAF ─────────────────────────────
+        let timelineChart = null;
+
+        function loadTimeline() {
+            fetch("http://localhost:5000/api/timeline")
+                .then(r => r.json())
+                .then(data => {
+                    // Izvuci labele (vremena) i vrijednosti (brojevi)
+                    let labels = data.map(d => d.time);
+                    let counts = data.map(d => d.count);
+
+                    if (timelineChart) {
+                        // Ako graf već postoji, samo ažuriraj podatke
+                        timelineChart.data.labels = labels;
+                        timelineChart.data.datasets[0].data = counts;
+                        timelineChart.update();
+                        return;
+                    }
+
+                    // Kreiraj novi graf
+                    let ctx = document.getElementById("timelineChart").getContext("2d");
+                    timelineChart = new Chart(ctx, {
+                        type: "line",
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: "Anomalije",
+                                data: counts,
+                                borderColor: "#ff4444",
+                                backgroundColor: "#ff444422",
+                                borderWidth: 2,
+                                pointBackgroundColor: "#ff4444",
+                                pointRadius: 4,
+                                fill: true,
+                                tension: 0.4  // Zaobljene linije
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    labels: { color: "white" }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    ticks: { color: "#8888aa" },
+                                    grid:  { color: "#ffffff11" }
+                                },
+                                y: {
+                                    ticks: { color: "#8888aa" },
+                                    grid:  { color: "#ffffff11" },
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                });
+        }
+
+        // Učitaj timeline kad se klikne tab
+        // Ažuriraj showTab funkciju da poziva loadTimeline
+        const originalShowTab = showTab;
+        showTab = function(name) {
+            originalShowTab.call(this, name);
+            if (name === 'timeline') loadTimeline();
+        }
+        
+        // ── LIVE REFRESH ─────────────────────────────
+        // setInterval poziva funkciju svake X milisekundi
+        // 30000ms = 30 sekundi
+
+        function refreshData() {
+        fetch("http://localhost:5000/api/stats")
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById("total-packets").textContent = data.total_packets;
+                document.getElementById("total-anomalies").textContent = data.total_anomalies;
+                document.getElementById("unique-attackers").textContent = data.unique_attackers;
+
+                // Ažuriraj vrijeme zadnjeg refresha
+                let sada = new Date().toLocaleTimeString();
+                document.getElementById("last-refresh").textContent = `Zadnji refresh: ${sada}`;
+            });
+    }
+
+    // Pokreni odmah pri učitavanju stranice
+    refreshData();
+
+    // Pa ponavljaj svakih 30 sekundi
+    setInterval(refreshData, 10000);
 </script>
 </body>
 </html>

@@ -57,6 +57,24 @@ def attackers():
         for row in napadaci
     ])
 
+@app.route("/api/timeline")
+def timeline():
+    conn = get_conn()
+    # Grupiši anomalije po minutama
+    # strftime('%H:%M', ...) pretvara timestamp u format "15:31"
+    rows = conn.execute("""
+        SELECT 
+            strftime('%H:%M', datetime(timestamp, 'unixepoch')) as minuta,
+            COUNT(*) as broj
+        FROM anomaly
+        GROUP BY minuta
+        ORDER BY minuta ASC
+        LIMIT 60
+    """).fetchall()
+    return jsonify([
+        {"time": row["minuta"], "count": row["broj"]}
+        for row in rows
+    ])
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

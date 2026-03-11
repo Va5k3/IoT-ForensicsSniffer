@@ -1,865 +1,601 @@
 <!DOCTYPE html>
-<html lang="sr">
+<html lang="bs">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IoT Forensic Sniffer</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IoT Forensics — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700&display=swap" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+  :root {
+    --bg:       #080c0f;
+    --surface:  #0d1318;
+    --border:   #1a2530;
+    --accent:   #00e5ff;
+    --red:      #ff3b5c;
+    --yellow:   #ffd54f;
+    --green:    #00e676;
+    --muted:    #4a6070;
+    --text:     #cdd8e0;
+    --mono:     'Share Tech Mono', monospace;
+    --sans:     'Barlow', sans-serif;
+  }
 
-:root {
-  --bg:       #070b0f;
-  --surface:  #0d1117;
-  --border:   #1c2936;
-  --accent:   #00e5ff;
-  --accent3:  #00e396;
-  --warn:     #feb019;
-  --muted:    #4a6070;
-  --text:     #c9d6e0;
-  --text-dim: #5a7080;
-  --critical: #ff1744;
-  --high:     #ff6d00;
-  --medium:   #ffd600;
-  --low:      #00e396;
-}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Space Mono', monospace;
-  font-size: 12px;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
+  /* ── Scanline overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,229,255,.015) 2px,
+      rgba(0,229,255,.015) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
 
-/* Scanline overlay */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg, transparent, transparent 2px,
-    rgba(0,229,255,0.015) 2px, rgba(0,229,255,0.015) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
-}
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--muted); }
+  .status-bar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    display: inline-block;
+    margin-right: 5px;
+  }
+  .dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+  .dot.offline { background: var(--red); }
 
-/* ── HEADER ─────────────────────────────────────────── */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 24px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: .4; }
+  }
 
-.logo { display: flex; align-items: center; gap: 12px; }
+  #clock {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+  }
 
-.logo-icon {
-  width: 36px; height: 36px;
-  border: 2px solid var(--accent);
-  border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-  animation: pulse-border 2s ease-in-out infinite;
-}
+  /* ── Layout ── */
+  main { padding: 24px 28px; max-width: 1600px; margin: 0 auto; }
 
-@keyframes pulse-border {
-  0%,100% { box-shadow: 0 0 8px rgba(0,229,255,0.3); }
-  50%      { box-shadow: 0 0 20px rgba(0,229,255,0.7); }
-}
+  /* ── Stat cards ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .stat-card:hover { border-color: var(--accent); }
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    right: -20px; top: -20px;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,229,255,.06) 0%, transparent 70%);
+  }
+  .stat-card.red  { border-top-color: var(--red); }
+  .stat-card.red::after  { background: radial-gradient(circle, rgba(255,59,92,.06) 0%, transparent 70%); }
+  .stat-card.yellow { border-top-color: var(--yellow); }
+  .stat-card.green  { border-top-color: var(--green); }
 
-.logo-text {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
-  font-size: 16px;
-  color: #fff;
-  letter-spacing: 0.05em;
-}
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-family: var(--mono);
+  }
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 34px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .stat-card.red .stat-value   { color: var(--red); }
+  .stat-card.yellow .stat-value { color: var(--yellow); }
+  .stat-card.green .stat-value  { color: var(--green); }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    font-family: var(--mono);
+  }
 
-.logo-sub {
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-}
+  /* ── Charts row ── */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
 
-.header-right { display: flex; align-items: center; gap: 20px; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px;
+  }
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title::before {
+    content: '▸';
+    color: var(--muted);
+  }
 
-.status-dot { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-dim); }
+  .chart-wrap { position: relative; height: 220px; }
 
-.dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--accent3);
-  animation: blink 1.5s ease-in-out infinite;
-}
+  /* ── Bottom row ── */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 900px) { .bottom-row { grid-template-columns: 1fr; } }
 
-@keyframes blink {
-  0%,100% { opacity: 1; }
-  50%      { opacity: 0.3; }
-}
+  /* ── Table ── */
+  .tbl-wrap { overflow-x: auto; max-height: 360px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    position: sticky; top: 0;
+    background: var(--surface);
+  }
+  tbody tr { border-bottom: 1px solid rgba(26,37,48,.8); transition: background .15s; }
+  tbody tr:hover { background: rgba(0,229,255,.04); }
+  tbody td { padding: 9px 10px; font-size: 12px; font-family: var(--mono); }
+  .td-ip   { color: var(--accent); }
+  .td-ts   { color: var(--muted); font-size: 11px; }
+  .td-desc { color: var(--text); max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.time-display {
-  font-family: 'Space Mono', monospace;
-  font-size: 13px;
-  color: var(--accent);
-  letter-spacing: 0.1em;
-}
+  /* ── Severity badges ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    font-family: var(--mono);
+    border: 1px solid;
+    text-transform: uppercase;
+  }
+  .badge-CRITICAL { color: var(--red);    border-color: var(--red);    background: rgba(255,59,92,.08); }
+  .badge-HIGH     { color: var(--yellow); border-color: var(--yellow); background: rgba(255,213,79,.08); }
+  .badge-MEDIUM   { color: var(--accent); border-color: var(--accent); background: rgba(0,229,255,.08); }
+  .badge-LOW      { color: var(--green);  border-color: var(--green);  background: rgba(0,230,118,.08); }
 
-/* ── NAV ─────────────────────────────────────────────── */
-.nav {
-  display: flex;
-  gap: 2px;
-  padding: 0 24px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
+  /* ── Attackers list ── */
+  .attacker-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .attacker-row:last-child { border-bottom: none; }
+  .attacker-ip { font-family: var(--mono); color: var(--accent); font-size: 13px; flex: 1; }
+  .attacker-bar-wrap { flex: 2; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .attacker-bar { height: 100%; background: var(--red); border-radius: 2px; transition: width .6s ease; }
+  .attacker-count { font-family: var(--mono); font-size: 12px; color: var(--red); width: 30px; text-align: right; }
 
-.nav-tab {
-  padding: 10px 18px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
-  user-select: none;
-  font-family: 'Space Mono', monospace;
-}
+  /* ── Devices table ── */
+  .device-type-badge {
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 2px 7px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: rgba(255,255,255,.02);
+  }
 
-.nav-tab:hover { color: var(--text); }
-.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    letter-spacing: 2px;
+  }
 
-/* ── MAIN ────────────────────────────────────────────── */
-.main {
-  padding: 20px 24px;
-  max-width: 1600px;
-  margin: 0 auto;
-}
+  /* ── Error / loading ── */
+  .loading { color: var(--muted); font-family: var(--mono); font-size: 12px; padding: 20px 0; text-align: center; }
+  .error-msg { color: var(--red); font-family: var(--mono); font-size: 11px; padding: 12px; background: rgba(255,59,92,.06); border: 1px solid rgba(255,59,92,.2); margin-bottom: 16px; display: none; }
 
-.page { display: none; }
-.page.active { display: block; }
-
-/* ── STAT CARDS ──────────────────────────────────────── */
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-  position: relative;
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
-
-.stat-card:hover { border-color: var(--accent); }
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: var(--accent);
-}
-
-.stat-card.danger::before { background: var(--critical); }
-.stat-card.warn::before   { background: var(--warn); }
-.stat-card.ok::before     { background: var(--accent3); }
-
-.stat-label {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  color: var(--muted);
-  margin-bottom: 10px;
-}
-
-.stat-value {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
-  font-size: 38px;
-  line-height: 1;
-  color: #fff;
-  letter-spacing: -0.02em;
-}
-
-.stat-value.danger { color: var(--critical); }
-.stat-value.warn   { color: var(--warn); }
-.stat-value.ok     { color: var(--accent3); }
-
-.stat-sub { font-size: 9px; color: var(--text-dim); margin-top: 6px; }
-
-/* ── GRID ────────────────────────────────────────────── */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-
-@media (max-width: 900px) {
-  .stats-row { grid-template-columns: 1fr 1fr; }
-  .grid-2 { grid-template-columns: 1fr; }
-}
-
-/* ── PANEL ───────────────────────────────────────────── */
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.panel-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--text);
-}
-
-.panel-badge {
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(0,229,255,0.12);
-  color: var(--accent);
-  border: 1px solid rgba(0,229,255,0.2);
-}
-
-.panel-body { padding: 16px; }
-
-/* ── TABLE ───────────────────────────────────────────── */
-.data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-
-.data-table th {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--muted);
-  padding: 8px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-.data-table td {
-  padding: 9px 12px;
-  border-bottom: 1px solid rgba(28,41,54,0.5);
-  color: var(--text);
-  font-family: 'Space Mono', monospace;
-}
-
-.data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: rgba(0,229,255,0.04); }
-
-.table-scroll { overflow-x: auto; max-height: 450px; overflow-y: auto; }
-
-/* ── SEVERITY BADGES ─────────────────────────────────── */
-.sev {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 3px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.sev-CRITICAL { background: rgba(255,23,68,0.2);  color: var(--critical); border: 1px solid rgba(255,23,68,0.4); }
-.sev-HIGH     { background: rgba(255,109,0,0.2);  color: var(--high);     border: 1px solid rgba(255,109,0,0.4); }
-.sev-MEDIUM   { background: rgba(255,214,0,0.15); color: var(--medium);   border: 1px solid rgba(255,214,0,0.3); }
-.sev-LOW      { background: rgba(0,227,150,0.15); color: var(--low);      border: 1px solid rgba(0,227,150,0.3); }
-
-/* ── ATTACKER BARS ───────────────────────────────────── */
-.attacker-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(28,41,54,0.5);
-  transition: background 0.15s;
-}
-
-.attacker-item:hover { background: rgba(0,229,255,0.03); }
-.attacker-item:last-child { border-bottom: none; }
-
-.attacker-ip {
-  width: 130px;
-  font-family: 'Space Mono', monospace;
-  font-size: 12px;
-  color: var(--critical);
-  flex-shrink: 0;
-}
-
-.attacker-bar-wrap {
-  flex: 1;
-  background: rgba(255,255,255,0.06);
-  border-radius: 3px;
-  height: 16px;
-  overflow: hidden;
-}
-
-.attacker-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--critical), var(--high));
-  border-radius: 3px;
-  transition: width 1.2s cubic-bezier(0.16,1,0.3,1);
-  width: 0%;
-}
-
-.attacker-count {
-  width: 60px;
-  text-align: right;
-  color: var(--muted);
-  font-size: 11px;
-  flex-shrink: 0;
-}
-
-/* ── TIMELINE ITEMS ──────────────────────────────────── */
-.timeline-item {
-  display: flex;
-  gap: 14px;
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(28,41,54,0.4);
-  animation: slide-in 0.3s ease;
-}
-
-.timeline-item:last-child { border-bottom: none; }
-
-@keyframes slide-in {
-  from { opacity: 0; transform: translateX(-8px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-.timeline-dot {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  margin-top: 4px;
-  flex-shrink: 0;
-}
-
-.timeline-dot.CRITICAL { background: var(--critical); box-shadow: 0 0 8px var(--critical); }
-.timeline-dot.HIGH     { background: var(--high);     box-shadow: 0 0 6px var(--high); }
-.timeline-dot.MEDIUM   { background: var(--medium); }
-.timeline-dot.LOW      { background: var(--low); }
-
-.timeline-time { font-size: 10px; color: var(--text-dim); }
-.timeline-desc { font-size: 11px; color: var(--text); margin: 3px 0; line-height: 1.5; }
-
-/* ── CHART WRAP ──────────────────────────────────────── */
-.chart-wrap { position: relative; height: 220px; }
-
-/* ── TOAST ───────────────────────────────────────────── */
-.toast-container {
-  position: fixed;
-  bottom: 20px; right: 20px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 360px;
-}
-
-.toast {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: 6px;
-  padding: 12px 16px;
-  animation: toast-in 0.3s ease, toast-out 0.3s ease 4.7s forwards;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-}
-
-.toast.CRITICAL { border-left-color: var(--critical); }
-.toast.HIGH     { border-left-color: var(--high); }
-
-.toast-title { font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 3px; }
-.toast-body  { font-size: 10px; color: var(--text-dim); line-height: 1.4; }
-
-@keyframes toast-in  { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: translateX(0); } }
-@keyframes toast-out { to   { opacity:0; transform: translateX(20px); } }
-
-/* ── MISC ────────────────────────────────────────────── */
-.empty-state { padding: 40px; text-align: center; color: var(--text-dim); font-size: 11px; }
-.text-accent { color: var(--accent); }
-.text-dim    { color: var(--text-dim); }
-.tag {
-  display: inline-block;
-  font-size: 9px;
-  padding: 1px 5px;
-  border-radius: 2px;
-  background: rgba(90,112,128,0.2);
-  color: var(--muted);
-  border: 1px solid rgba(90,112,128,0.3);
-}
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  /* ── Refresh btn ── */
+  .btn-refresh {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+    text-transform: uppercase;
+  }
+  .btn-refresh:hover { border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
 <body>
 
-<!-- ── HEADER ───────────────────────────────────────── -->
-<header class="header">
-  <div class="logo">
-    <div class="logo-icon">🔍</div>
-    <div>
-      <div class="logo-text">IoT Forensic Sniffer</div>
-      <div class="logo-sub">MQTT · Anomaly Detection</div>
-    </div>
-  </div>
-  <div class="header-right">
-    <div class="status-dot">
-      <div class="dot" id="statusDot"></div>
-      <span id="statusText">Povezivanje...</span>
-    </div>
-    <div class="time-display" id="clockDisplay">--:--:--</div>
+<header>
+  <div class="logo">IoT<span>//</span>FORENSICS <span style="color:var(--border)">|</span> <span style="font-size:11px;color:var(--muted)">THREAT MONITOR</span></div>
+  <div class="status-bar">
+    <span><span class="dot" id="api-dot"></span><span id="api-status">CHECKING...</span></span>
+    <span id="clock"></span>
+    <button class="btn-refresh" onclick="loadAll()">↺ REFRESH</button>
   </div>
 </header>
 
-<!-- ── NAV ──────────────────────────────────────────── -->
-<nav class="nav">
-  <div class="nav-tab active" onclick="switchPage('dashboard', this)">Dashboard</div>
-  <div class="nav-tab" onclick="switchPage('napadaci', this)">Napadači</div>
-  <div class="nav-tab" onclick="switchPage('anomalije', this)">Anomalije</div>
-  <div class="nav-tab" onclick="switchPage('timeline', this)">Timeline</div>
-</nav>
+<main>
 
-<!-- ── PAGES ────────────────────────────────────────── -->
-<main class="main">
+  <div class="error-msg" id="error-msg">⚠ API nije dostupan — pokrenite: <strong>python api.py</strong></div>
 
-  <!-- DASHBOARD -->
-  <div class="page active" id="page-dashboard">
-
-    <div class="stats-row">
-      <div class="stat-card ok">
-        <div class="stat-label">Ukupno paketa</div>
-        <div class="stat-value ok" id="s-packets">0</div>
-        <div class="stat-sub">Snimljeno od starta</div>
-      </div>
-      <div class="stat-card warn">
-        <div class="stat-label">Anomalije</div>
-        <div class="stat-value warn" id="s-anomalies">0</div>
-        <div class="stat-sub">Detektovano ukupno</div>
-      </div>
-      <div class="stat-card danger">
-        <div class="stat-label">Napadača</div>
-        <div class="stat-value danger" id="s-attackers">0</div>
-        <div class="stat-sub">Jedinstvenih IP adresa</div>
-      </div>
+  <!-- STAT CARDS -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-label">Ukupno paketa</div>
+      <div class="stat-value" id="total-packets">—</div>
+      <div class="stat-sub" id="proto-breakdown">učitavam...</div>
     </div>
-
-    <div class="grid-2">
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">Anomalije — Vremenski niz</span>
-          <span class="panel-badge">po minuti</span>
-        </div>
-        <div class="panel-body">
-          <div class="chart-wrap"><canvas id="timelineChart"></canvas></div>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">Top napadači</span>
-          <span class="panel-badge" id="attackersBadge">0</span>
-        </div>
-        <div id="attackers-mini" style="padding:8px 0"></div>
-      </div>
+    <div class="stat-card red">
+      <div class="stat-label">Anomalije</div>
+      <div class="stat-value" id="total-anomalies">—</div>
+      <div class="stat-sub" id="severity-breakdown">učitavam...</div>
     </div>
+    <div class="stat-card yellow">
+      <div class="stat-label">Napadači</div>
+      <div class="stat-value" id="unique-attackers">—</div>
+      <div class="stat-sub">jedinstvenih IP adresa</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">IoT uređaji</div>
+      <div class="stat-value" id="total-devices">—</div>
+      <div class="stat-sub">klasifikovanih uređaja</div>
+    </div>
+  </div>
 
+  <!-- CHARTS -->
+  <div class="charts-row">
     <div class="panel">
-      <div class="panel-header">
-        <span class="panel-title">🔴 Zadnje anomalije</span>
-        <span class="panel-badge" id="recentBadge">0</span>
-      </div>
-      <div class="table-scroll">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Vrijeme</th>
-              <th>IP</th>
-              <th>Tip</th>
-              <th>Severity</th>
-              <th>Opis</th>
-            </tr>
-          </thead>
-          <tbody id="recent-anomalies-table">
-            <tr><td colspan="5" class="empty-state">Učitavam...</td></tr>
+      <div class="panel-title">Timeline anomalija</div>
+      <div class="chart-wrap"><canvas id="timeline-chart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Anomalije po tipu</div>
+      <div class="chart-wrap"><canvas id="type-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ANOMALIES + ATTACKERS -->
+  <div class="bottom-row">
+    <div class="panel">
+      <div class="panel-title">Posljednje anomalije</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Timestamp</th>
+            <th>IP adresa</th>
+            <th>Tip</th>
+            <th>Ozbiljnost</th>
+            <th>Opis</th>
+          </tr></thead>
+          <tbody id="anomaly-tbody">
+            <tr><td colspan="5" class="loading">Učitavam...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-  </div>
-
-  <!-- NAPADAČI -->
-  <div class="page" id="page-napadaci">
     <div class="panel">
-      <div class="panel-header">
-        <span class="panel-title">Top napadači — Bar chart</span>
-        <span class="panel-badge" id="napadaciBadge">0</span>
-      </div>
-      <div id="attackers-full" style="padding: 8px 0;"></div>
+      <div class="panel-title">Top napadači</div>
+      <div id="attackers-list" class="loading">Učitavam...</div>
     </div>
   </div>
 
-  <!-- ANOMALIJE -->
-  <div class="page" id="page-anomalije">
-    <div class="panel">
-      <div class="panel-header">
-        <span class="panel-title">Sve anomalije</span>
-        <span class="panel-badge" id="anomalijeBadge">0</span>
-      </div>
-      <div class="table-scroll">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Vrijeme</th>
-              <th>IP</th>
-              <th>Tip</th>
-              <th>Severity</th>
-              <th>Opis</th>
-            </tr>
-          </thead>
-          <tbody id="anomalies-table">
-            <tr><td colspan="5" class="empty-state">Učitavam...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- TIMELINE -->
-  <div class="page" id="page-timeline">
-    <div class="panel">
-      <div class="panel-header">
-        <span class="panel-title">⏱ Hronološki pregled anomalija</span>
-        <span class="panel-badge" id="timelineBadge">0 događaja</span>
-      </div>
-      <div style="max-height:600px; overflow-y:auto; padding: 4px 0;" id="timeline-list">
-        <div class="empty-state">Nema anomalija</div>
-      </div>
+  <!-- DEVICES -->
+  <div class="panel" style="margin-bottom:28px">
+    <div class="panel-title">Klasifikovani IoT uređaji</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>IP adresa</th>
+          <th>Tip uređaja</th>
+          <th>Paketi</th>
+          <th>Avg. vel. (B)</th>
+          <th>Dest. IP</th>
+          <th>Pkt/min</th>
+          <th>ML klaster</th>
+        </tr></thead>
+        <tbody id="devices-tbody">
+          <tr><td colspan="7" class="loading">Učitavam...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
 </main>
 
-<div class="toast-container" id="toastContainer"></div>
+<footer>IoT FORENSICS DASHBOARD &nbsp;|&nbsp; MQTT / CoAP THREAT MONITOR &nbsp;|&nbsp; <span id="footer-ts"></span></footer>
 
 <script>
-const API = 'http://localhost:5000/api';
-let timelineChartInstance = null;
+const API = 'http://localhost:5000';
+let timelineChart = null;
+let typeChart     = null;
 
-// ── SAT ──────────────────────────────────────────────
-setInterval(() => {
-  document.getElementById('clockDisplay').textContent =
-    new Date().toTimeString().slice(0,8);
-}, 1000);
-document.getElementById('clockDisplay').textContent =
-  new Date().toTimeString().slice(0,8);
+// ── Clock ──────────────────────────────────────────────────
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('bs', {hour12: false});
+  document.getElementById('footer-ts').textContent =
+    now.toLocaleDateString('bs') + ' ' + now.toLocaleTimeString('bs', {hour12: false});
+}
+tick();
+setInterval(tick, 1000);
 
-// ── PAGE SWITCH ───────────────────────────────────────
-function switchPage(name, el) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  el.classList.add('active');
-
-  if (name === 'napadaci')  loadAttackersFull();
-  if (name === 'anomalije') loadAnomaliesTable();
-  if (name === 'timeline')  loadTimelineList();
+// ── Fetch helper ───────────────────────────────────────────
+async function apiFetch(endpoint) {
+  const res = await fetch(API + endpoint);
+  if (!res.ok) throw new Error(res.status);
+  return res.json();
 }
 
-// ── HELPERS ───────────────────────────────────────────
-function escHtml(s) {
-  if (!s && s !== 0) return '—';
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function setApiStatus(ok) {
+  const dot = document.getElementById('api-dot');
+  const lbl = document.getElementById('api-status');
+  const err = document.getElementById('error-msg');
+  dot.className = 'dot ' + (ok ? 'online' : 'offline');
+  lbl.textContent = ok ? 'API ONLINE' : 'API OFFLINE';
+  err.style.display = ok ? 'none' : 'block';
 }
 
-function animateNum(id, target) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const start = parseInt(el.textContent) || 0;
-  const diff = target - start;
-  if (diff === 0) return;
-  let step = 0;
-  const timer = setInterval(() => {
-    step++;
-    el.textContent = Math.round(start + diff * (step/20));
-    if (step >= 20) { el.textContent = target; clearInterval(timer); }
-  }, 16);
-}
-
-function showToast(title, body, sev) {
-  const c = document.getElementById('toastContainer');
-  const t = document.createElement('div');
-  t.className = `toast ${sev}`;
-  t.innerHTML = `<div class="toast-title">${escHtml(title)}</div><div class="toast-body">${escHtml(body)}</div>`;
-  c.appendChild(t);
-  setTimeout(() => t.parentNode && t.parentNode.removeChild(t), 5000);
-}
-
-// ── STATS ─────────────────────────────────────────────
+// ── Stats ──────────────────────────────────────────────────
 async function loadStats() {
-  try {
-    const r = await fetch(`${API}/stats`);
-    const j = await r.json();
-    // Tvoj API vraća direktno objekat (nije wrapped u .data)
-    const s = j.data || j;
-    animateNum('s-packets',   s.total_packets   || 0);
-    animateNum('s-anomalies', s.total_anomalies || 0);
-    animateNum('s-attackers', s.unique_attackers || 0);
+  const d = await apiFetch('/api/stats');
+  document.getElementById('total-packets').textContent    = d.total_packets.toLocaleString();
+  document.getElementById('total-anomalies').textContent  = d.total_anomalies.toLocaleString();
+  document.getElementById('unique-attackers').textContent = d.unique_attackers.toLocaleString();
 
-    const sada = new Date().toLocaleTimeString();
-    document.getElementById('statusText').textContent = `Refresh: ${sada}`;
+  const protos = Object.entries(d.protocols || {})
+    .map(([k,v]) => `${k}: ${v}`).join('  ·  ');
+  document.getElementById('proto-breakdown').textContent = protos || 'nema podataka';
+
+  const sevs = Object.entries(d.severity_breakdown || {})
+    .map(([k,v]) => `${k}: ${v}`).join('  ·  ');
+  document.getElementById('severity-breakdown').textContent = sevs || 'nema anomalija';
+}
+
+// ── Timeline chart ─────────────────────────────────────────
+async function loadTimeline() {
+  const rows = await apiFetch('/api/timeline');
+  const labels = rows.map(r => r.time);
+  const values = rows.map(r => r.count);
+
+  if (timelineChart) timelineChart.destroy();
+  const ctx = document.getElementById('timeline-chart').getContext('2d');
+  timelineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Anomalije',
+        data: values,
+        borderColor: '#ff3b5c',
+        backgroundColor: 'rgba(255,59,92,.12)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#ff3b5c',
+        tension: 0.4,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#4a6070', font: { family: "'Share Tech Mono'" } },
+             grid:  { color: '#1a2530' } },
+        y: { ticks: { color: '#4a6070', font: { family: "'Share Tech Mono'" } },
+             grid:  { color: '#1a2530' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// ── Type donut chart ───────────────────────────────────────
+async function loadTypeChart() {
+  const rows = await apiFetch('/api/anomalies');
+  const counts = {};
+  rows.forEach(r => { counts[r.type] = (counts[r.type] || 0) + 1; });
+  const labels = Object.keys(counts);
+  const values = Object.values(counts);
+
+  const palette = ['#ff3b5c','#ffd54f','#00e5ff','#00e676','#ff6b35','#b388ff','#64ffda'];
+
+  if (typeChart) typeChart.destroy();
+  const ctx = document.getElementById('type-chart').getContext('2d');
+  typeChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: palette.slice(0, labels.length),
+        borderColor: '#080c0f',
+        borderWidth: 3,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#4a6070', font: { family: "'Share Tech Mono'", size: 10 },
+                    padding: 12, boxWidth: 10 }
+        }
+      },
+      cutout: '68%'
+    }
+  });
+}
+
+// ── Anomalies table ────────────────────────────────────────
+async function loadAnomalies() {
+  const rows = await apiFetch('/api/anomalies');
+  const tbody = document.getElementById('anomaly-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">Nema anomalija u bazi</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.slice(0, 50).map(r => `
+    <tr>
+      <td class="td-ts">${r.timestamp}</td>
+      <td class="td-ip">${r.ip}</td>
+      <td><span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${r.type}</span></td>
+      <td><span class="badge badge-${r.severity}">${r.severity}</span></td>
+      <td class="td-desc" title="${r.description}">${r.description}</td>
+    </tr>
+  `).join('');
+}
+
+// ── Attackers ──────────────────────────────────────────────
+async function loadAttackers() {
+  const rows = await apiFetch('/api/attackers');
+  const container = document.getElementById('attackers-list');
+  if (!rows.length) {
+    container.innerHTML = '<div class="loading">Nema napadača</div>';
+    return;
+  }
+  const max = rows[0].anomaly_count;
+  container.innerHTML = rows.map(r => `
+    <div class="attacker-row">
+      <div class="attacker-ip">${r.ip}</div>
+      <div class="attacker-bar-wrap">
+        <div class="attacker-bar" style="width:${Math.round(r.anomaly_count/max*100)}%"></div>
+      </div>
+      <div class="attacker-count">${r.anomaly_count}</div>
+    </div>
+  `).join('');
+}
+
+// ── Devices ────────────────────────────────────────────────
+async function loadDevices() {
+  const rows = await apiFetch('/api/devices');
+  const tbody = document.getElementById('devices-tbody');
+  document.getElementById('total-devices').textContent = rows.length;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">Nema klasifikovanih uređaja</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td class="td-ip">${r.ip}</td>
+      <td><span class="device-type-badge">${r.device_type}</span></td>
+      <td style="color:var(--text)">${r.pkt_count.toLocaleString()}</td>
+      <td style="color:var(--text)">${r.avg_size}</td>
+      <td style="color:var(--text)">${r.unique_dst}</td>
+      <td style="color:var(--text)">${r.pkt_per_min}</td>
+      <td style="color:var(--muted)">${r.ml_cluster !== null ? r.ml_cluster : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// ── Load all ───────────────────────────────────────────────
+async function loadAll() {
+  try {
+    await apiFetch('/api/health');
+    setApiStatus(true);
+    await Promise.all([
+      loadStats(),
+      loadTimeline(),
+      loadTypeChart(),
+      loadAnomalies(),
+      loadAttackers(),
+      loadDevices(),
+    ]);
   } catch(e) {
-    document.getElementById('statusText').textContent = 'API nedostupan';
-    document.getElementById('statusDot').style.background = 'var(--critical)';
+    setApiStatus(false);
+    document.getElementById('total-packets').textContent    = '—';
+    document.getElementById('total-anomalies').textContent  = '—';
+    document.getElementById('unique-attackers').textContent = '—';
+    document.getElementById('total-devices').textContent    = '—';
   }
 }
 
-// ── ATTACKERS (mini - na dashboardu) ─────────────────
-async function loadAttackersMini() {
-  try {
-    const r = await fetch(`${API}/attackers`);
-    const data = await r.json();
-    const list = Array.isArray(data) ? data : (data.data || []);
-    if (!list.length) return;
-
-    document.getElementById('attackersBadge').textContent = list.length;
-    const container = document.getElementById('attackers-mini');
-    container.innerHTML = '';
-    const max = list[0].anomaly_count;
-    // Prikaži top 5 na dashboardu
-    list.slice(0,5).forEach(a => {
-      const posto = (a.anomaly_count / max * 100).toFixed(1);
-      container.innerHTML += `
-        <div class="attacker-item">
-          <span class="attacker-ip">${escHtml(a.ip)}</span>
-          <div class="attacker-bar-wrap">
-            <div class="attacker-bar" style="width:0%" data-target="${posto}"></div>
-          </div>
-          <span class="attacker-count">${a.anomaly_count}</span>
-        </div>`;
-    });
-    // Animiraj barove
-    setTimeout(() => {
-      document.querySelectorAll('#attackers-mini .attacker-bar').forEach(b => {
-        b.style.width = b.dataset.target + '%';
-      });
-    }, 100);
-  } catch(e) {}
-}
-
-// ── ATTACKERS (full - na napadači stranici) ───────────
-async function loadAttackersFull() {
-  try {
-    const r = await fetch(`${API}/attackers`);
-    const data = await r.json();
-    const list = Array.isArray(data) ? data : (data.data || []);
-    if (!list.length) return;
-
-    document.getElementById('napadaciBadge').textContent = list.length;
-    const container = document.getElementById('attackers-full');
-    container.innerHTML = '';
-    const max = list[0].anomaly_count;
-    list.forEach(a => {
-      const posto = (a.anomaly_count / max * 100).toFixed(1);
-      container.innerHTML += `
-        <div class="attacker-item">
-          <span class="attacker-ip">${escHtml(a.ip)}</span>
-          <div class="attacker-bar-wrap">
-            <div class="attacker-bar" style="width:0%" data-target="${posto}"></div>
-          </div>
-          <span class="attacker-count">${a.anomaly_count}</span>
-        </div>`;
-    });
-    setTimeout(() => {
-      document.querySelectorAll('#attackers-full .attacker-bar').forEach(b => {
-        b.style.width = b.dataset.target + '%';
-      });
-    }, 100);
-  } catch(e) {}
-}
-
-// ── ANOMALIES TABLE (dashboard - zadnjih 10) ──────────
-async function loadRecentAnomalies() {
-  try {
-    const r = await fetch(`${API}/anomalies`);
-    const data = await r.json();
-    const list = Array.isArray(data) ? data : (data.data || []);
-
-    document.getElementById('recentBadge').textContent = list.length;
-    const tbody = document.getElementById('recent-anomalies-table');
-    tbody.innerHTML = '';
-
-    if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nema anomalija</td></tr>';
-      return;
-    }
-
-    list.slice(0,10).forEach(a => {
-      const sev = a.severity || '';
-      tbody.innerHTML += `
-        <tr>
-          <td class="text-dim">${escHtml(a.timestamp)}</td>
-          <td class="text-accent">${escHtml(a.ip)}</td>
-          <td><span class="tag">${escHtml(a.type)}</span></td>
-          <td><span class="sev sev-${sev}">${sev}</span></td>
-          <td>${escHtml(a.description)}</td>
-        </tr>`;
-    });
-  } catch(e) {}
-}
-
-// ── ANOMALIES TABLE (puna tabela) ─────────────────────
-async function loadAnomaliesTable() {
-  try {
-    const r = await fetch(`${API}/anomalies`);
-    const data = await r.json();
-    const list = Array.isArray(data) ? data : (data.data || []);
-
-    document.getElementById('anomalijeBadge').textContent = list.length;
-    const tbody = document.getElementById('anomalies-table');
-    tbody.innerHTML = '';
-
-    if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nema anomalija</td></tr>';
-      return;
-    }
-
-    list.forEach(a => {
-      const sev = a.severity || '';
-      tbody.innerHTML += `
-        <tr>
-          <td class="text-dim">${escHtml(a.timestamp)}</td>
-          <td class="text-accent">${escHtml(a.ip)}</td>
-          <td><span class="tag">${escHtml(a.type)}</span></td>
-          <td><span class="sev sev-${sev}">${sev}</span></td>
-          <td>${escHtml(a.description)}</td>
-        </tr>`;
-    });
-  } catch(e) {}
-}
-
-// ── TIMELINE CHART (Chart.js line) ───────────────────
-async function loadTimelineChart() {
-  try {
-    const r = await fetch(`${API}/timeline`);
-    const data = await r.json();
-    const list = Array.isArray(data) ? data : (data.data || []);
-    if (!list.length) return;
-
-    const labels = list.map(d => d.time);
-    const counts = list.map(d => d.count);
-
-    const ctx = document.getElementById('timelineChart').getContext('2d');
-    if (timelineChartInstance) timelineChartInstance.destroy();
-    timelineChartInstance = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Anomalije',
-          data: counts,
-          borderColor: '#ff1744',
-          backgroundColor: 'rgba(255,23,68,0.12)',
-          borderWidth: 2,
-          pointBackgroundColor: '#ff1744',
-          pointRadius: 3,
-          fill: true,
-          tension: 0.4,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { labels: { color: '#5a7080', font: { family: 'Space Mono', size: 10 } } }
-        },
-        scales: {
-          x: { ticks: { color: '#5a7080', font: { size: 9 } }, grid: { color: '#1c2936' } },
-          y: { ticks: { color: '#5a7080', font: { size: 9 } }, grid: { color: '#1c2936' }, beginAtZero: true }
-        }
-      }
-    });
-  } catch(e) {}
-}
-
-// ── TIMELINE LIST ─────────────────────────────────────
-async function loadTimelineList() {
-  try {
-    const r = await fetch(`${API}/anomalies`);
-    const data = await r.json();
-    const list = Array.isArray(data) ? data : (data.data || []);
-
-    document.getElementById('timelineBadge').textContent = `${list.length} događaja`;
-    const container = document.getElementById('timeline-list');
-    container.innerHTML = '';
-
-    if (!list.length) {
-      container.innerHTML = '<div class="empty-state">Nema anomalija</div>';
-      return;
-    }
-
-    list.forEach(a => {
-      const sev = a.severity || 'LOW';
-      const div = document.createElement('div');
-      div.className = 'timeline-item';
-      div.innerHTML = `
-        <div class="timeline-dot ${sev}"></div>
-        <div style="flex:1">
-          <div class="timeline-time">${escHtml(a.timestamp)}</div>
-          <div class="timeline-desc">
-            <span class="sev sev-${sev}">${sev}</span>
-            <span class="text-accent" style="margin-left:8px">${escHtml(a.ip)}</span>
-            <span style="margin-left:8px">${escHtml(a.description)}</span>
-          </div>
-          <div style="margin-top:4px"><span class="tag">${escHtml(a.type)}</span></div>
-        </div>`;
-      container.appendChild(div);
-    });
-  } catch(e) {}
-}
-
-// ── REFRESH ───────────────────────────────────────────
-async function refresh() {
-  await loadStats();
-  await loadRecentAnomalies();
-  await loadAttackersMini();
-  await loadTimelineChart();
-}
-
-// ── INIT ──────────────────────────────────────────────
-refresh();
-setInterval(refresh, 10000);
+// Auto-refresh svakih 30s
+loadAll();
+setInterval(loadAll, 30000);
 </script>
 </body>
 </html>

@@ -57,18 +57,18 @@ def run_all_detectors(parsed, src_ip, timestamp):
     return anomalies
 
 
-if __name__ == "__main__":
+#if __name__ == "__main__":
     
-    data = load_pcap("captures/scan_A.pcap")
+    #data = load_pcap("captures/scan_A.pcap")
 
-    anomalije = []
-    for p in data:
-        if len(p['raw']) > 0:
-            parsed = parse_mqtt(p['raw'])
-            if parsed:
-                anomaly = detectBruteForce(parsed, p["src_ip"], p["timestamp"])
-                if anomaly:
-                    anomalije.append(anomaly)
-    print(f"Detektovano anomalija: {len(anomalije)}")
-    for a in anomalije[:10]:
-        print(a)
+    #anomalije = []
+    #for p in data:
+    #    if len(p['raw']) > 0:
+    #        parsed = parse_mqtt(p['raw'])
+    #        if parsed:
+    #            anomaly = detectBruteForce(parsed, p["src_ip"], p["timestamp"])
+    #            if anomaly:
+    #                anomalije.append(anomaly)
+    #print(f"Detektovano anomalija: {len(anomalije)}")
+    #for a in anomalije[:10]:
+    #    print(a)

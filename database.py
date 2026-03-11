@@ -2,37 +2,34 @@ import sqlite3
 import os
 
 def init_db(path: str):
-
-    if os.path.exists(path):
-        os.remove(path)
     
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS packets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp REAL,
-            src_ip TEXT,
-            dst_ip TEXT,
-            protocol TEXT,
-            size INTEGER       
-            )
-        """)
-
+            timestamp REAL, src_ip TEXT, dst_ip TEXT,
+            protocol TEXT, size INTEGER
+        )
+    """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS anomaly (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp REAL,
-            ip TEXT,
-            type TEXT,
-            severity TEXT,
-            description TEXT       
-            )
-        """)
-    
+            timestamp REAL, ip TEXT, type TEXT,
+            severity TEXT, description TEXT
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS devices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip TEXT UNIQUE, device_type TEXT, ml_cluster INTEGER,
+            pkt_count INTEGER, avg_size REAL, unique_dst INTEGER,
+            pkt_per_min REAL, last_seen REAL
+        )
+    """)
     conn.commit()
     return conn
-
 def save_packet(conn, packet: dict):   #insert_packet funkcija prima konekciju i paket u obliku rječnika, a zatim ubacuje te podatke u bazu podataka.
     conn.execute("""
         INSERT INTO packets (timestamp, src_ip, dst_ip, protocol, size)

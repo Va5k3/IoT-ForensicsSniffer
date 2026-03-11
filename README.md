@@ -9,7 +9,8 @@ Podržava **MQTT** (TCP/1883) i **CoAP** (UDP/5683) protokole, automatski detekt
 
 ```bash
 # 1. Klonirajte / raspakujte projekat
-cd iot-forensics
+cd IoT-ForensicsSniffer
+
 
 # 2. Instalirajte zavisnosti
 pip install -r requirements.txt

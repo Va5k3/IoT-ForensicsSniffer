@@ -42,14 +42,14 @@ python main.py --mode pcap --report both
 
 ### Live mod — real-time sniffing
 
-> Zahtijeva root/admin privilegije!
+> Zahteva root/admin privilegije!
 
 ```bash
 sudo python main.py --mode live --interface eth0
 sudo python main.py --mode live --interface wlan0
 sudo python main.py --mode live --interface any    # svi interfejsi (Linux)
 
-# + generiši izvještaj kada zaustaviš (Ctrl+C)
+# + generiši izveštaj kada zaustaviš (Ctrl+C)
 sudo python main.py --mode live --interface eth0 --report json
 ```
 
@@ -60,7 +60,7 @@ python api.py
 # Dostupno na: http://localhost:5000
 ```
 
-### Samo izvještaj iz postojeće baze
+### Samo izveštaj iz postojeće baze
 
 ```bash
 python report.py --format json
@@ -93,11 +93,11 @@ main.py              ← CLI ulazna tačka (argparse + .env)
 | Detektor               | Protokol | Ozbiljnost | Opis |
 |------------------------|----------|------------|------|
 | `MQTT_BRUTEFORCE`      | MQTT     | CRITICAL   | >10 CONNECT poruka u 60s |
-| `SENSITIVE_PAYLOAD`    | MQTT     | HIGH       | Ključne riječi u payloadu (password, token, key…) |
+| `SENSITIVE_PAYLOAD`    | MQTT     | HIGH       | Ključne reči u payloadu (password, token, key…) |
 | `SUSPICIOUS_TOPIC`     | MQTT     | HIGH       | Sumnjivi topici (/cmd, /exec, /admin, /shell…) |
 | `MQTT_PUBLISH_FLOOD`   | MQTT     | HIGH       | >50 PUBLISH poruka u 10s |
 | `COAP_SUSPICIOUS_PATH` | CoAP     | MEDIUM     | Sumnjive URI putanje (/admin, /firmware…) |
-| `COAP_FLOOD`           | CoAP     | HIGH       | >30 CoAP zahtjeva u 10s |
+| `COAP_FLOOD`           | CoAP     | HIGH       | >30 CoAP zahteva u 10s |
 
 ---
 
@@ -110,7 +110,7 @@ main.py              ← CLI ulazna tačka (argparse + .env)
 | IP Camera          | Veliki paketi (>900B), visoka frekvencija (>60/min) |
 | IoT Sensor         | Mali paketi (<250B), niska frekvencija (<15/min) |
 | Smart Hub/Gateway  | Mnogo destinacija (≥5), srednji paketi |
-| Smart Actuator     | Mali paketi, umjerena frekvencija (5–40/min) |
+| Smart Actuator     | Mali paketi, umerena frekvencija (5–40/min) |
 | Mobile/Laptop      | Mnogo destinacija (≥8), veći paketi |
 
 ### ML (KMeans clustering)
@@ -123,7 +123,7 @@ Kada ima ≥4 uređaja, scikit-learn KMeans grupiše uređaje sa sličnim promet
 | Endpoint             | Opis |
 |----------------------|------|
 | `GET /api/stats`     | Ukupne statistike (paketi, anomalije, protokoli) |
-| `GET /api/anomalies` | Posljednjih 100 anomalija |
+| `GET /api/anomalies` | Posednjih 100 anomalija |
 | `GET /api/attackers` | Top 10 IP adresa po broju anomalija |
 | `GET /api/timeline`  | Anomalije po minutama (za grafikon) |
 | `GET /api/devices`   | Klasifikovani IoT uređaji |
@@ -135,7 +135,7 @@ Kada ima ≥4 uređaja, scikit-learn KMeans grupiše uređaje sa sličnim promet
 
 ```
 iot-forensics/
-├── .env.example        ← Primjer konfiguracije (kopirajte u .env)
+├── .env.example        ← Primer konfiguracije (kopirajte u .env)
 ├── .gitignore
 ├── requirements.txt    ← Python zavisnosti
 ├── README.md

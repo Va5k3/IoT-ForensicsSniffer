@@ -45,6 +45,19 @@ def save_anomaly(conn, anomaly: dict, timestamp: float):
                  VALUES (?,?,?,?,?)
                  """, (anomaly["type"],anomaly["severity"], anomaly["ip"], anomaly["description"], timestamp))
     
+def save_device(conn, device: dict):
+    conn.execute("""
+        INSERT INTO devices (ip, device_type, ml_cluster, pkt_count, avg_size, unique_dst, pkt_per_min, last_seen)
+        VALUES (?,?,?,?,?,?,?,?)
+        ON CONFLICT(ip) DO UPDATE SET
+            device_type=excluded.device_type, ml_cluster=excluded.ml_cluster,
+            pkt_count=excluded.pkt_count, avg_size=excluded.avg_size,
+            unique_dst=excluded.unique_dst, pkt_per_min=excluded.pkt_per_min,
+            last_seen=excluded.last_seen
+    """, (device["ip"], device["device_type"], device.get("ml_cluster"),
+          device["pkt_count"], device["avg_size"], device["unique_dst"],
+          device.get("pkt_per_min", 0.0), device.get("last_seen", 0.0)))
+    
 if __name__ == "__main__":
     conn = init_db("test.db")
     print("Baza podataka inicijalizovana.")

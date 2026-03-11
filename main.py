@@ -2,7 +2,7 @@ from reader import load_pcap
 from parser import parse_mqtt
 from detector import detectBruteForce, detectSensitivePayload, detectSuspiciousTopic
 from database import init_db, save_anomaly, save_packet
-
+from detector import run_all_detectors
 
 def main():
     # inicijalizacije baze podataka
@@ -25,16 +25,12 @@ def main():
             parsed = parse_mqtt(p['raw'])
             if parsed:
                 #proveravamo da li je napad
-                #anomaly = detectBruteForce(parsed, p["src_ip"], p["timestamp"])
-                #if not anomaly:
-                anomaly = detectSensitivePayload(parsed, p["src_ip"], p["timestamp"])
-                if not anomaly:
-                    anomaly = detectSuspiciousTopic(parsed, p["src_ip"], p["timestamp"])
-                if anomaly:
+                anomalies = run_all_detectors(parsed, p["src_ip"], p["timestamp"])
+                for anomaly in anomalies:
                     save_anomaly(conn, anomaly, p["timestamp"])
                     anomaly_count += 1
                     print(f"[!!!] {anomaly['severity']} | {anomaly['ip']} | {anomaly['description']}")
-
+                  
 
     conn.commit()
 

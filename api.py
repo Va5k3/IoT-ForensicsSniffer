@@ -76,5 +76,28 @@ def timeline():
         for row in rows
     ])
 
+@app.route("/api/devices")
+def devices():
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT ip, device_type, pkt_count, avg_size, unique_dst, pkt_per_min, ml_cluster "
+            "FROM devices ORDER BY pkt_count DESC"
+        ).fetchall()
+        return jsonify([{
+            "ip": r["ip"], "device_type": r["device_type"],
+            "pkt_count": r["pkt_count"], "avg_size": round(float(r["avg_size"] or 0), 1),
+            "unique_dst": r["unique_dst"], "pkt_per_min": round(float(r["pkt_per_min"] or 0), 2),
+            "ml_cluster": r["ml_cluster"],
+        } for r in rows])
+    except:
+        return jsonify([])
+
+@app.route("/api/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

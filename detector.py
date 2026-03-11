@@ -1,6 +1,5 @@
 from collections import defaultdict
-from parser import parse_mqtt
-from reader import load_pcap
+
 
 connect_times = defaultdict(list) #kljuc je ip adresa, a vrijednost je lista timestampova kada je ta adresa poslala CONNECT poruku
 
@@ -21,13 +20,14 @@ def detectBruteForce(parsed_packet: dict, src_ip: str, timestamp: float) -> dict
                 "description" : f"Brute force: {len(connTime)} CONNECT poruka u posljednjih 60 sekundi"
             }
         return None
+     return None
 
 def detectSensitivePayload(parsed_packet: dict, src_ip: str, timestamp: float) -> dict | None:
     if parsed_packet["msg_type"] == "PUBLISH":
         payload = parsed_packet["payload"].lower()
         if "password" in payload or "token" in payload or "key" in payload  or "secret" in payload or "passwd" in payload:
             return {
-                "type" : "SENSETIVE_PAYLOAD",
+                "type" : "SENSITIVE_PAYLOAD",
                 "severity" : "HIGH",
                 "ip" : src_ip,
                 "description" : f"Osetljiva rec u payload : '{payload}'"
@@ -45,6 +45,18 @@ def detectSuspiciousTopic(parsed_packet: dict, src_ip: str, timestamp: float) ->
             }
     return None
     
+_ALL_DETECTORS = [detectBruteForce, detectSensitivePayload, detectSuspiciousTopic]
+
+def run_all_detectors(parsed, src_ip, timestamp):
+    """Jedan paket može imati više anomalija istovremeno."""
+    anomalies = []
+    for detector in _ALL_DETECTORS:
+        result = detector(parsed, src_ip, timestamp)
+        if result:
+            anomalies.append(result)
+    return anomalies
+
+
 if __name__ == "__main__":
     
     data = load_pcap("captures/scan_A.pcap")

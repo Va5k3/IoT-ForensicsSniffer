@@ -24,9 +24,6 @@ def get_conn() -> sqlite3.Connection:
     return conn
 
 
-# ---------------------------------------------------------------------------
-# Endpointi
-# ---------------------------------------------------------------------------
 
 @app.route("/api/stats")
 def stats():
@@ -133,9 +130,7 @@ def health():
     return jsonify({"status": "ok", "db": DB_PATH})
 
 
-# ---------------------------------------------------------------------------
-# Pokretanje
-# ---------------------------------------------------------------------------
+
 if __name__ == "__main__":
     port = int(os.getenv("API_PORT", 5000))
     logger.info(f"API server: http://localhost:{port}")

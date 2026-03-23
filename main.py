@@ -1,20 +1,3 @@
-"""
-Glavni ulazni punkt IoT Forenzičkog Sniffera.
-
-Načini rada:
-  pcap  — čita i analizira .pcap fajl (default)
-  live  — pasivno snima mrežni saobraćaj u realnom vremenu
-
-Upotreba:
-  python main.py
-  python main.py --mode pcap --pcap captures/scan_A.pcap
-  python main.py --mode pcap --pcap captures/attack.pcap --report json
-  python main.py --mode pcap --report pdf
-  python main.py --mode pcap --report both
-  sudo python main.py --mode live --interface eth0
-  sudo python main.py --mode live --interface any --report json
-"""
-
 import argparse
 import os
 
@@ -34,9 +17,6 @@ from reader import load_pcap
 logger = setup_logger("main")
 
 
-# ---------------------------------------------------------------------------
-# PCAP mod
-# ---------------------------------------------------------------------------
 
 def process_pcap(conn, pcap_path: str) -> tuple:
     """Učitava pcap, analizira sve pakete, sprema u bazu. Vraća (paketi, anomalije)."""
@@ -63,7 +43,7 @@ def process_pcap(conn, pcap_path: str) -> tuple:
         if not parsed:
             continue
 
-        # Pokreni SVE detektore — jedan paket može imati više anomalija
+        # Pokreni SVE detektore 
         anomalies = run_all_detectors(parsed, p["src_ip"], p["timestamp"])
         for anomaly in anomalies:
             save_anomaly(conn, anomaly, p["timestamp"])
@@ -99,9 +79,7 @@ def process_pcap(conn, pcap_path: str) -> tuple:
     return len(data), anomaly_count
 
 
-# ---------------------------------------------------------------------------
-# Izvještaji
-# ---------------------------------------------------------------------------
+
 
 def _generate_reports(conn, report_type: str) -> None:
     from report import generate_json_report, generate_pdf_report
@@ -114,9 +92,7 @@ def _generate_reports(conn, report_type: str) -> None:
             logger.info(f"PDF izvještaj: {path}")
 
 
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
+
 
 def _build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(

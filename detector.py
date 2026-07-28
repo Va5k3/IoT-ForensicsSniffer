@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 
-connect_times = defaultdict(list) #kljuc je ip adresa, a vrijednost je lista timestampova kada je ta adresa poslala CONNECT poruku
+connect_times = defaultdict(list) #kljuc je ip adresa, vrednost je lista timestampova kada je ta adresa poslala CONNECT poruku
 
 
 
@@ -10,8 +10,8 @@ def detectBruteForce(parsed_packet: dict, src_ip: str, timestamp: float) -> dict
      if parsed_packet["msg_type"] == "CONNECT":
         connect_times[src_ip].append(timestamp) #dodajemo timestamp u listu za tu ip adresu
         connTime = [t for t in connect_times[src_ip] if timestamp - t < 60] #filtriramo timestampove koji su unutar posljednjih 60 sekundi 
-        connect_times[src_ip] = connTime #a zatim ažuriramo listu samo sa tim timestampovima
-        if(len(connTime) > 10): #ako je broj CONNECT poruka unutar posljednjih 60 sekundi veći od 10, onda imamo sumnjivu aktivnost
+        connect_times[src_ip] = connTime #azuriramo listu samo sa tim timestampovima
+        if(len(connTime) > 10): #ako je broj CONNECT poruka unutar posljednjih 60 sekundi veci od 10, onda imamo sumnjivu aktivnost
             return {
                 "type" : "MQTT_BRUTEFORCE",
                 "severity" : "CRITICAL",
